@@ -1,0 +1,55 @@
+import streamlit as st
+import gspread
+import pandas as pd
+from google.oauth2.service_account import Credentials
+
+# --- إعداد الاتصال بجوجل شيت ---
+def get_connection():
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    # ملاحظة: ضع ملف الـ json الخاص بك في نفس المجلد
+    creds = Credentials.from_service_account_file("credentials.json", scopes=scope)
+    client = gspread.authorize(creds)
+    return client.open("منظومة عائلة فطيس").sheet1 # تأكد من اسم الشيت
+
+st.set_page_config(page_title="منظومة عائلة فطيس", page_icon="🌳", layout="centered")
+
+# --- الواجهة الرئيسية ---
+st.title("🌳 منظومة عائلة فطيس")
+menu = st.sidebar.selectbox("القائمة", ["الشجرة", "تسجيل طلب", "لوحة المشرف"])
+
+# --- وظائف البيانات ---
+def load_data():
+    sheet = get_connection()
+    data = sheet.get_all_records()
+    return pd.DataFrame(data)
+
+# --- الشجرة ---
+if menu == "الشجرة":
+    st.subheader("قائمة أفراد العائلة المعتمدين")
+    try:
+        df = load_data()
+        st.write(f"إجمالي الأفراد: {len(df)}")
+        st.table(df)
+    except:
+        st.error("تعذر تحميل البيانات، تأكد من إعدادات الربط.")
+
+# --- التسجيل ---
+elif menu == "تسجيل طلب":
+    st.subheader("طلب انضمام للعائلة")
+    name = st.text_input("الاسم الثلاثي")
+    phone = st.text_input("رقم الهاتف (218...)")
+    if st.button("إرسال الطلب"):
+        sheet = get_connection()
+        sheet.append_row([name, phone, "معلق"])
+        st.success("تم إرسال طلبك بنجاح!")
+
+# --- لوحة المشرف ---
+elif menu == "لوحة المشرف":
+    password = st.text_input("كلمة مرور المشرف", type="password")
+    if password == "Samir2026":
+        st.subheader("لوحة التحكم")
+        df = load_data()
+        st.dataframe(df)
+        st.warning("هنا يمكنك إضافة دوال الاعتماد والحذف لاحقاً.")
+    elif password:
+        st.error("كلمة المرور غير صحيحة")
